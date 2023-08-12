@@ -59,9 +59,28 @@ type (
 		Insert(columns ...string) Into[InsertIntoQuery]
 	}
 
+	UpdateSet struct {
+		Column string
+		Value  any
+	}
+
+	UpdateSetQuery interface {
+		Set(...UpdateSet) UpdateWhereQuery
+	}
+
+	UpdateWhereQuery interface {
+		Where[UpdateWhereQuery]
+		SQL() string
+	}
+
+	UpdateQuery interface {
+		Update(table string) UpdateQuery
+	}
+
 	Query interface {
 		SelectQuery
 		InsertQuery
+		UpdateQuery
 	}
 )
 
@@ -115,4 +134,9 @@ func NewInsertQuery(columns ...string) Into[InsertIntoQuery] {
 	ib := &InsertBuilder{}
 	ib.Insert(columns...)
 	return ib
+}
+
+func NewUpdateQuery(table string) UpdateSetQuery {
+	ub := &UpdateBuilder{}
+	return ub.Update(table)
 }

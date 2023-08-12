@@ -65,4 +65,14 @@ func TestQuery(t *testing.T) {
 		s := NewInsertQuery("user_id", "name").Into("users").Values(1, "foo").SQL()
 		require.Equal(t, "INSERT INTO users (user_id, name) VALUES ($1, $2)", s)
 	})
+
+	t.Run("case=insert into with select", func(t *testing.T) {
+		s := NewInsertQuery("user_id", "name").Into("users").Select("id", "name").From("users").SQL()
+		require.Equal(t, "INSERT INTO users (user_id, name) SELECT id, name FROM users", s)
+	})
+
+	t.Run("case=update", func(t *testing.T) {
+		s := NewUpdateQuery("users").Set(UpdateSet{Column: "id", Value: 1}).Where("id", 1, Equals).SQL()
+		require.Equal(t, "UPDATE users SET id = 1 WHERE id = 1", s)
+	})
 }

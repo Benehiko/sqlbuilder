@@ -47,19 +47,23 @@ func (ib *InsertBuilder) SQL() string {
 	sb.WriteString("INSERT ")
 	sb.WriteString("INTO ")
 	sb.WriteString(ib.table)
+
 	sb.WriteString(" (")
 	sb.WriteString(strings.TrimSpace(strings.Join(ib.columns, ", ")))
 	sb.WriteString(")")
-	sb.WriteString(" VALUES ")
-	sb.WriteString("(")
 
-	cols := []string{}
-	for i := 1; i <= len(ib.columns); i++ {
-		cols = append(cols, "$"+strconv.Itoa(i))
+	if ib.s == nil {
+		sb.WriteString(" VALUES ")
+		sb.WriteString("(")
+
+		cols := []string{}
+		for i := 1; i <= len(ib.columns); i++ {
+			cols = append(cols, "$"+strconv.Itoa(i))
+		}
+
+		sb.WriteString(strings.TrimSpace(strings.Join(cols, ", ")))
+		sb.WriteString(")")
 	}
-
-	sb.WriteString(strings.TrimSpace(strings.Join(cols, ", ")))
-	sb.WriteString(")")
 
 	return sb.String()
 }

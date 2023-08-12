@@ -1,13 +1,11 @@
 package main
 
 import (
-	"strconv"
 	"strings"
-	"time"
 )
 
 type SelectBuilder struct {
-	parent Query
+	parent InsertQuery
 
 	table   string
 	as      string
@@ -107,24 +105,8 @@ func (sb *SelectBuilder) writeWhere(b *strings.Builder) {
 	b.WriteString(" ")
 	b.WriteString(string(sb.where.Op))
 	b.WriteString(" ")
-	switch v := sb.where.Value.(type) {
-	case string:
-		b.WriteString(v)
-	case int:
-		b.WriteString(strconv.Itoa(v))
-	case float64:
-		b.WriteString(strconv.FormatFloat(v, 'E', -1, 64))
-	case bool:
-		b.WriteString(strconv.FormatBool(v))
-	case time.Time:
-		b.WriteString(v.Format(time.RFC3339))
-	case nil:
-		b.WriteString("NULL")
-	case []byte:
-		b.WriteString(string(v))
-	case float32:
-		b.WriteString(strconv.FormatFloat(float64(v), 'f', -1, 32))
-	}
+
+	b.WriteString(ToString[any](sb.where.Value))
 }
 
 func (s *SelectBuilder) SQL() string {
