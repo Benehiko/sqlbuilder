@@ -1,4 +1,4 @@
-module github.com/Benehiko/sql
+module github.com/Benehiko/sqlbuilder
 
 go 1.20
 

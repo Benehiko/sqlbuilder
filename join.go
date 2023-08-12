@@ -1,4 +1,4 @@
-package main
+package sqlbuilder
 
 type JoinType string
 
