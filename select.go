@@ -1,6 +1,7 @@
 package sqlbuilder
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -13,6 +14,7 @@ type SelectBuilder struct {
 	where   *WhereCondition
 	orderBy *Sort
 	joins   []*Join
+	pos     int
 }
 
 var _ SelectQuery = (*SelectBuilder)(nil)
@@ -106,7 +108,41 @@ func (sb *SelectBuilder) writeWhere(b *strings.Builder) {
 	b.WriteString(string(sb.where.Op))
 	b.WriteString(" ")
 
-	b.WriteString(ToString[any](sb.where.Value))
+	if sb.where.Op == In {
+		var length int
+		switch x := sb.where.Value.(type) {
+		case []any:
+			length = len(x)
+		case []string:
+			length = len(x)
+		case []int:
+			length = len(x)
+		case []int64:
+			length = len(x)
+		case []float64:
+			length = len(x)
+		case []bool:
+			length = len(x)
+		}
+
+		var values []string
+		for length > 0 {
+			sb.pos++
+			values = append(values, "$"+strconv.FormatInt(int64(sb.pos), 10))
+			length--
+		}
+		b.WriteString("(")
+		for i := range values {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(values[i])
+		}
+		b.WriteString(")")
+	} else {
+		sb.pos++
+		b.WriteString("$" + strconv.FormatInt(int64(sb.pos), 10))
+	}
 }
 
 func (s *SelectBuilder) SQL() string {
@@ -128,13 +164,13 @@ func (s *SelectBuilder) SQL() string {
 		sb.WriteString(strings.TrimSpace(strings.Join(s.columns, ", ")))
 	}
 
+	sb.WriteString(" FROM ")
+	sb.WriteString(s.table)
+
 	if s.as != "" {
 		sb.WriteString(" AS ")
 		sb.WriteString(s.as)
 	}
-
-	sb.WriteString(" FROM ")
-	sb.WriteString(s.table)
 
 	if len(s.joins) > 0 {
 		for _, j := range s.joins {
@@ -142,6 +178,10 @@ func (s *SelectBuilder) SQL() string {
 			sb.WriteString(string(j.join))
 			sb.WriteString(" ")
 			sb.WriteString(j.table)
+			if j.as != "" {
+				sb.WriteString(" AS ")
+				sb.WriteString(j.as)
+			}
 			sb.WriteString(" ON ")
 			sb.WriteString(j.on.Column)
 			sb.WriteString(" ")

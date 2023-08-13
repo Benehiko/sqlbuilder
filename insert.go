@@ -6,11 +6,12 @@ import (
 )
 
 type InsertBuilder struct {
-	table   string
-	columns []string
-	values  []any
-	as      string
-	s       SelectQuery
+	table     string
+	columns   []string
+	returning []string
+	values    []any
+	as        string
+	s         SelectQuery
 }
 
 var _ InsertQuery = &InsertBuilder{}
@@ -42,6 +43,11 @@ func (ib *InsertBuilder) Select(columns ...string) FromQuery[SelectFromQuery] {
 	return ib.s.Select(columns...)
 }
 
+func (ib *InsertBuilder) Returning(columns ...string) InsertIntoQuery {
+	ib.returning = columns
+	return ib
+}
+
 func (ib *InsertBuilder) SQL() string {
 	var sb strings.Builder
 	sb.WriteString("INSERT ")
@@ -63,6 +69,11 @@ func (ib *InsertBuilder) SQL() string {
 
 		sb.WriteString(strings.TrimSpace(strings.Join(cols, ", ")))
 		sb.WriteString(")")
+	}
+
+	if ib.returning != nil {
+		sb.WriteString(" RETURNING ")
+		sb.WriteString(strings.TrimSpace(strings.Join(ib.returning, ", ")))
 	}
 
 	return sb.String()

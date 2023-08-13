@@ -44,7 +44,7 @@ func (j *Join) RightJoin(table string) AliasOrJoinOn {
 	return j
 }
 
-func (j *Join) As(alias string) Joins {
+func (j *Join) As(alias string) JoinOn {
 	j.as = alias
 	return j
 }

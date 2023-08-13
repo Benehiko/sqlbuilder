@@ -26,7 +26,7 @@ type (
 	}
 
 	AliasOrJoinOn interface {
-		Alias[Joins]
+		Alias[JoinOn]
 		JoinOn
 	}
 
@@ -52,6 +52,7 @@ type (
 	InsertIntoQuery interface {
 		Values(values ...any) InsertIntoQuery
 		SelectQuery
+		Returning(columns ...string) InsertIntoQuery
 		SQL() string
 	}
 
