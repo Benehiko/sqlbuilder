@@ -11,7 +11,7 @@ const (
 
 type Join struct {
 	table string
-	on    *WhereCondition
+	on    *WhereCondition[BasicOperator]
 	join  JoinType
 	as    string
 
@@ -50,10 +50,10 @@ func (j *Join) As(alias string) JoinOn {
 }
 
 func (j *Join) On(table string, joinColumn string) SelectFromQuery {
-	j.on = &WhereCondition{
-		Column: table,
-		Op:     Equals,
-		Value:  joinColumn,
+	j.on = &WhereCondition[BasicOperator]{
+		ColumnA: table,
+		Op:      Equals,
+		ColumnB: joinColumn,
 	}
 	return j.parent
 }

@@ -10,7 +10,11 @@ type (
 	}
 
 	Where[T any] interface {
-		Where(column string, value any, operator Operator) T
+		Where(column string, operator BasicOperator) T
+	}
+
+	WhereSpecial[T any] interface {
+		WhereSpecial(column string, operator SpecialOperator) T
 	}
 
 	Order[T any] interface {
@@ -41,6 +45,7 @@ type (
 		Joins
 		Alias[SelectFromQuery]
 		Where[SelectFromQuery]
+		WhereSpecial[SelectFromQuery]
 		Order[SelectFromQuery]
 		SQL() string
 	}
@@ -60,17 +65,13 @@ type (
 		Insert(columns ...string) Into[InsertIntoQuery]
 	}
 
-	UpdateSet struct {
-		Column string
-		Value  any
-	}
-
 	UpdateSetQuery interface {
-		Set(...UpdateSet) UpdateWhereQuery
+		Set(columns ...string) UpdateWhereQuery
 	}
 
 	UpdateWhereQuery interface {
 		Where[UpdateWhereQuery]
+
 		SQL() string
 	}
 
@@ -85,26 +86,42 @@ type (
 	}
 )
 
-type Operator string
+type BasicOperator string
+
+type SpecialOperator func() (int, string)
+
+func In(count int) SpecialOperator {
+	return func() (int, string) {
+		return count, "IN"
+	}
+}
+
+func NotIn(count int) SpecialOperator {
+	return func() (int, string) {
+		return count, "NOT IN"
+	}
+}
+
+type Operator interface {
+	BasicOperator | SpecialOperator
+}
 
 const (
-	Equals             Operator = "="
-	NotEqual           Operator = "!="
-	GreaterThan        Operator = ">"
-	GreaterThanOrEqual Operator = ">="
-	LessThan           Operator = "<"
-	LessThanOrEqual    Operator = "<="
-	Like               Operator = "LIKE"
-	NotLike            Operator = "NOT LIKE"
-	In                 Operator = "IN"
-	NotIn              Operator = "NOT IN"
-	IsNull             Operator = "IS NULL"
-	IsNotNull          Operator = "IS NOT NULL"
-	IsTrue             Operator = "IS TRUE"
-	IsNotTrue          Operator = "IS NOT TRUE"
-	IsFalse            Operator = "IS FALSE"
-	IsNotFalse         Operator = "IS NOT FALSE"
-	IsNotDistinctFrom  Operator = "IS NOT DISTINCT FROM"
+	Equals             BasicOperator = "="
+	NotEqual           BasicOperator = "!="
+	GreaterThan        BasicOperator = ">"
+	GreaterThanOrEqual BasicOperator = ">="
+	LessThan           BasicOperator = "<"
+	LessThanOrEqual    BasicOperator = "<="
+	Like               BasicOperator = "LIKE"
+	NotLike            BasicOperator = "NOT LIKE"
+	IsNull             BasicOperator = "IS NULL"
+	IsNotNull          BasicOperator = "IS NOT NULL"
+	IsTrue             BasicOperator = "IS TRUE"
+	IsNotTrue          BasicOperator = "IS NOT TRUE"
+	IsFalse            BasicOperator = "IS FALSE"
+	IsNotFalse         BasicOperator = "IS NOT FALSE"
+	IsNotDistinctFrom  BasicOperator = "IS NOT DISTINCT FROM"
 )
 
 type OrderBy string
@@ -119,10 +136,10 @@ type Sort struct {
 	orderBy OrderBy
 }
 
-type WhereCondition struct {
-	Column string
-	Op     Operator
-	Value  any
+type WhereCondition[T Operator] struct {
+	ColumnA string
+	Op      T
+	ColumnB string
 }
 
 func NewSelectQuery(columns ...string) FromQuery[SelectFromQuery] {

@@ -8,13 +8,14 @@ import (
 type SelectBuilder struct {
 	parent InsertQuery
 
-	table   string
-	as      string
-	columns []string
-	where   *WhereCondition
-	orderBy *Sort
-	joins   []*Join
-	pos     int
+	table        string
+	as           string
+	columns      []string
+	where        *WhereCondition[BasicOperator]
+	whereSpecial *WhereCondition[SpecialOperator]
+	orderBy      *Sort
+	joins        []*Join
+	pos          int
 }
 
 var _ SelectQuery = (*SelectBuilder)(nil)
@@ -34,11 +35,18 @@ func (s *SelectBuilder) As(alias string) SelectFromQuery {
 	return s
 }
 
-func (s *SelectBuilder) Where(column string, value any, operator Operator) SelectFromQuery {
-	s.where = &WhereCondition{
-		Column: column,
-		Op:     operator,
-		Value:  value,
+func (s *SelectBuilder) Where(column string, operator BasicOperator) SelectFromQuery {
+	s.where = &WhereCondition[BasicOperator]{
+		ColumnA: column,
+		Op:      operator,
+	}
+	return s
+}
+
+func (s *SelectBuilder) WhereSpecial(column string, operator SpecialOperator) SelectFromQuery {
+	s.whereSpecial = &WhereCondition[SpecialOperator]{
+		ColumnA: column,
+		Op:      operator,
 	}
 	return s
 }
@@ -103,50 +111,43 @@ func (s *SelectBuilder) RightJoin(table string) AliasOrJoinOn {
 
 func (sb *SelectBuilder) writeWhere(b *strings.Builder) {
 	b.WriteString(" WHERE ")
-	b.WriteString(sb.where.Column)
-	b.WriteString(" ")
-	b.WriteString(string(sb.where.Op))
-	b.WriteString(" ")
 
-	if sb.where.Op == In {
-		var length int
-		switch x := sb.where.Value.(type) {
-		case []any:
-			length = len(x)
-		case []string:
-			length = len(x)
-		case []int:
-			length = len(x)
-		case []int64:
-			length = len(x)
-		case []float64:
-			length = len(x)
-		case []bool:
-			length = len(x)
+	if sb.whereSpecial != nil {
+		count, op := sb.whereSpecial.Op()
+		b.WriteString(sb.whereSpecial.ColumnA)
+		b.WriteString(" ")
+		b.WriteString(op)
+		b.WriteString(" ")
+
+		if count == 0 {
+			return
 		}
 
-		var values []string
-		for length > 0 {
-			sb.pos++
-			values = append(values, "$"+strconv.FormatInt(int64(sb.pos), 10))
-			length--
-		}
 		b.WriteString("(")
-		for i := range values {
+		for i := 0; i < count; i++ {
 			if i > 0 {
 				b.WriteString(", ")
 			}
-			b.WriteString(values[i])
+			b.WriteString("$" + strconv.FormatInt(int64(sb.pos), 10))
+			sb.pos++
 		}
 		b.WriteString(")")
 	} else {
-		sb.pos++
+		b.WriteString(sb.where.ColumnA)
+		b.WriteString(" ")
+		b.WriteString(string(sb.where.Op))
+		b.WriteString(" ")
 		b.WriteString("$" + strconv.FormatInt(int64(sb.pos), 10))
+		sb.pos++
 	}
 }
 
 func (s *SelectBuilder) SQL() string {
 	var sb strings.Builder
+
+	if s.pos == 0 {
+		s.pos = 1
+	}
 
 	if s.parent != nil {
 		switch p := s.parent.(type) {
@@ -183,15 +184,15 @@ func (s *SelectBuilder) SQL() string {
 				sb.WriteString(j.as)
 			}
 			sb.WriteString(" ON ")
-			sb.WriteString(j.on.Column)
+			sb.WriteString(j.on.ColumnA)
 			sb.WriteString(" ")
 			sb.WriteString(string(j.on.Op))
 			sb.WriteString(" ")
-			sb.WriteString(string(j.on.Value.(string)))
+			sb.WriteString(string(j.on.ColumnB))
 		}
 	}
 
-	if s.where != nil {
+	if s.where != nil || s.whereSpecial != nil {
 		s.writeWhere(&sb)
 	}
 
