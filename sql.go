@@ -41,11 +41,17 @@ type (
 		FullOuterJoin(table string) AliasOrJoinOn
 	}
 
+	SelectFromWhereOptionsQuery[T Operator] interface {
+		And(column string, operator T) SelectFromWhereOptionsQuery[T]
+		Or(column string, operator T) SelectFromWhereOptionsQuery[T]
+		SelectFromQuery
+	}
+
 	SelectFromQuery interface {
 		Joins
 		Alias[SelectFromQuery]
-		Where[SelectFromQuery]
-		WhereSpecial[SelectFromQuery]
+		Where[SelectFromWhereOptionsQuery[BasicOperator]]
+		WhereSpecial[SelectFromWhereOptionsQuery[SpecialOperator]]
 		Order[SelectFromQuery]
 		SQL() string
 	}
@@ -69,9 +75,15 @@ type (
 		Set(columns ...string) UpdateWhereQuery
 	}
 
-	UpdateWhereQuery interface {
-		Where[UpdateWhereQuery]
+	UpdateWhereOptionsQuery[T Operator] interface {
+		And(column string, operator T) UpdateWhereOptionsQuery[T]
+		Or(column string, operator T) UpdateWhereOptionsQuery[T]
+		SQL() string
+	}
 
+	UpdateWhereQuery interface {
+		Where[UpdateWhereOptionsQuery[BasicOperator]]
+		WhereSpecial[UpdateWhereOptionsQuery[SpecialOperator]]
 		SQL() string
 	}
 
@@ -131,6 +143,13 @@ const (
 	Desc OrderBy = "DESC"
 )
 
+type LogicalOperator string
+
+const (
+	And LogicalOperator = "AND"
+	Or  LogicalOperator = "OR"
+)
+
 type Sort struct {
 	columns []string
 	orderBy OrderBy
@@ -140,6 +159,8 @@ type WhereCondition[T Operator] struct {
 	ColumnA string
 	Op      T
 	ColumnB string
+	nextOp  LogicalOperator
+	next    *WhereCondition[T]
 }
 
 func NewSelectQuery(columns ...string) FromQuery[SelectFromQuery] {

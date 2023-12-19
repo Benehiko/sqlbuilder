@@ -18,7 +18,15 @@ type SelectBuilder struct {
 	pos          int
 }
 
-var _ SelectQuery = (*SelectBuilder)(nil)
+type SelectBuilderWhere[T Operator] struct {
+	*SelectBuilder
+}
+
+var (
+	_ SelectQuery                                  = (*SelectBuilder)(nil)
+	_ SelectFromWhereOptionsQuery[BasicOperator]   = (*SelectBuilderWhere[BasicOperator])(nil)
+	_ SelectFromWhereOptionsQuery[SpecialOperator] = (*SelectBuilderWhere[SpecialOperator])(nil)
+)
 
 func (s *SelectBuilder) Select(columns ...string) FromQuery[SelectFromQuery] {
 	s.columns = columns
@@ -35,19 +43,78 @@ func (s *SelectBuilder) As(alias string) SelectFromQuery {
 	return s
 }
 
-func (s *SelectBuilder) Where(column string, operator BasicOperator) SelectFromQuery {
+func (s *SelectBuilder) Where(column string, operator BasicOperator) SelectFromWhereOptionsQuery[BasicOperator] {
 	s.where = &WhereCondition[BasicOperator]{
 		ColumnA: column,
 		Op:      operator,
 	}
-	return s
+	return &SelectBuilderWhere[BasicOperator]{
+		SelectBuilder: s,
+	}
 }
 
-func (s *SelectBuilder) WhereSpecial(column string, operator SpecialOperator) SelectFromQuery {
+func (s *SelectBuilder) WhereSpecial(column string, operator SpecialOperator) SelectFromWhereOptionsQuery[SpecialOperator] {
 	s.whereSpecial = &WhereCondition[SpecialOperator]{
 		ColumnA: column,
 		Op:      operator,
 	}
+
+	return &SelectBuilderWhere[SpecialOperator]{
+		SelectBuilder: s,
+	}
+}
+
+func (s *SelectBuilderWhere[T]) And(column string, operator T) SelectFromWhereOptionsQuery[T] {
+	switch o := any(operator).(type) {
+	case BasicOperator:
+		if s.where != nil {
+			s.where.nextOp = And
+			s.where.next = &WhereCondition[BasicOperator]{
+				ColumnA: column,
+				Op:      o,
+			}
+		}
+	case SpecialOperator:
+		if s.whereSpecial != nil {
+			s.whereSpecial.nextOp = And
+			s.whereSpecial.next = &WhereCondition[SpecialOperator]{
+				ColumnA: column,
+				Op:      o,
+			}
+		}
+	}
+
+	return s
+}
+
+func (s *SelectBuilderWhere[T]) Or(column string, operator T) SelectFromWhereOptionsQuery[T] {
+	switch o := any(operator).(type) {
+	case BasicOperator:
+		if s.where != nil {
+			tail := s.where
+			for tail.next != nil {
+				tail = tail.next
+			}
+			tail.nextOp = Or
+			tail.next = &WhereCondition[BasicOperator]{
+				ColumnA: column,
+				Op:      o,
+			}
+		}
+	case SpecialOperator:
+		if s.whereSpecial != nil {
+			tail := s.whereSpecial
+			for tail.next != nil {
+				tail = tail.next
+			}
+			tail.nextOp = Or
+			tail.next = &WhereCondition[SpecialOperator]{
+				ColumnA: column,
+				Op:      o,
+			}
+		}
+	}
+
 	return s
 }
 
@@ -109,36 +176,55 @@ func (s *SelectBuilder) RightJoin(table string) AliasOrJoinOn {
 	return s.joins[len(s.joins)-1]
 }
 
+func (sb *SelectBuilder) writeWhereSpecialHelper(b *strings.Builder, next *WhereCondition[SpecialOperator]) {
+	count, op := next.Op()
+	b.WriteString(next.ColumnA)
+	b.WriteString(" ")
+	b.WriteString(op)
+	b.WriteString(" ")
+
+	if count == 0 {
+		b.WriteString("()")
+		return
+	}
+
+	b.WriteString("(")
+	for i := 0; i < count; i++ {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString("$" + strconv.FormatInt(int64(sb.pos), 10))
+		sb.pos += 1
+	}
+	b.WriteString(")")
+
+	if next.next != nil {
+		b.WriteString(" " + string(next.nextOp) + " ")
+		sb.writeWhereSpecialHelper(b, next.next)
+	}
+}
+
+func (sb *SelectBuilder) writeWhereHelper(b *strings.Builder, next *WhereCondition[BasicOperator]) {
+	b.WriteString(next.ColumnA)
+	b.WriteString(" ")
+	b.WriteString(string(next.Op))
+	b.WriteString(" ")
+	b.WriteString("$" + strconv.FormatInt(int64(sb.pos), 10))
+	sb.pos++
+
+	if next.next != nil {
+		b.WriteString(" " + string(next.nextOp) + " ")
+		sb.writeWhereHelper(b, next.next)
+	}
+}
+
 func (sb *SelectBuilder) writeWhere(b *strings.Builder) {
 	b.WriteString(" WHERE ")
 
 	if sb.whereSpecial != nil {
-		count, op := sb.whereSpecial.Op()
-		b.WriteString(sb.whereSpecial.ColumnA)
-		b.WriteString(" ")
-		b.WriteString(op)
-		b.WriteString(" ")
-
-		if count == 0 {
-			return
-		}
-
-		b.WriteString("(")
-		for i := 0; i < count; i++ {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			b.WriteString("$" + strconv.FormatInt(int64(sb.pos), 10))
-			sb.pos++
-		}
-		b.WriteString(")")
-	} else {
-		b.WriteString(sb.where.ColumnA)
-		b.WriteString(" ")
-		b.WriteString(string(sb.where.Op))
-		b.WriteString(" ")
-		b.WriteString("$" + strconv.FormatInt(int64(sb.pos), 10))
-		sb.pos++
+		sb.writeWhereSpecialHelper(b, sb.whereSpecial)
+	} else if sb.where != nil {
+		sb.writeWhereHelper(b, sb.where)
 	}
 }
 

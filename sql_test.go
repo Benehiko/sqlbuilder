@@ -77,8 +77,38 @@ func TestQuery(t *testing.T) {
 		require.Equal(t, "SELECT id, username FROM users WHERE id IN ($1, $2, $3)", s)
 	})
 
+	t.Run("case=select where and", func(t *testing.T) {
+		s := NewSelectQuery("id", "username").From("users").Where("id", Equals).And("username", Equals).SQL()
+		require.Equal(t, "SELECT id, username FROM users WHERE id = $1 AND username = $2", s)
+	})
+
+	t.Run("case=select where or", func(t *testing.T) {
+		s := NewSelectQuery("id", "username").From("users").Where("id", Equals).Or("username", Equals).SQL()
+		require.Equal(t, "SELECT id, username FROM users WHERE id = $1 OR username = $2", s)
+	})
+
+	t.Run("case=select where and/or", func(t *testing.T) {
+		s := NewSelectQuery("id", "username").From("users").Where("id", Equals).And("username", Equals).Or("email", Equals).SQL()
+		require.Equal(t, "SELECT id, username FROM users WHERE id = $1 AND username = $2 OR email = $3", s)
+	})
+
 	t.Run("case=update", func(t *testing.T) {
 		s := NewUpdateQuery("users").Set("id").Where("id", Equals).SQL()
 		require.Equal(t, "UPDATE users SET id = $1 WHERE id = $2", s)
+	})
+
+	t.Run("case=update where and", func(t *testing.T) {
+		s := NewUpdateQuery("users").Set("id").Where("id", Equals).And("username", Equals).SQL()
+		require.Equal(t, "UPDATE users SET id = $1 WHERE id = $2 AND username = $3", s)
+	})
+
+	t.Run("case=update where or", func(t *testing.T) {
+		s := NewUpdateQuery("users").Set("id").Where("id", Equals).Or("username", Equals).SQL()
+		require.Equal(t, "UPDATE users SET id = $1 WHERE id = $2 OR username = $3", s)
+	})
+
+	t.Run("case=update where and/or", func(t *testing.T) {
+		s := NewUpdateQuery("users").Set("id").Where("id", Equals).And("username", Equals).Or("email", Equals).SQL()
+		require.Equal(t, "UPDATE users SET id = $1 WHERE id = $2 AND username = $3 OR email = $4", s)
 	})
 }
