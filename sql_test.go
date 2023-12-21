@@ -73,7 +73,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("case=select where in", func(t *testing.T) {
-		s := NewSelectQuery("id", "username").From("users").WhereSpecial("id", In(3)).SQL()
+		s := NewSelectQuery("id", "username").From("users").Where("id", In(3)).SQL()
 		require.Equal(t, "SELECT id, username FROM users WHERE id IN ($1, $2, $3)", s)
 	})
 
@@ -110,5 +110,10 @@ func TestQuery(t *testing.T) {
 	t.Run("case=update where and/or", func(t *testing.T) {
 		s := NewUpdateQuery("users").Set("id").Where("id", Equals).And("username", Equals).Or("email", Equals).SQL()
 		require.Equal(t, "UPDATE users SET id = $1 WHERE id = $2 AND username = $3 OR email = $4", s)
+	})
+
+	t.Run("case=delete", func(t *testing.T) {
+		s := NewDeleteQuery().From("users").Where("id", NotEqual).And("name", In(3)).SQL()
+		require.Equal(t, "DELETE FROM users WHERE id != $1 AND name IN ($2, $3, $4)", s)
 	})
 }

@@ -5,14 +5,28 @@ import (
 	"strings"
 )
 
-type InsertBuilder struct {
-	table     string
-	columns   []string
-	returning []string
-	values    []any
-	as        string
-	s         SelectQuery
-}
+type (
+	Into[T any] interface {
+		Into(table string) T
+	}
+	InsertIntoQuery interface {
+		Values(values ...any) InsertIntoQuery
+		Returning(columns ...string) InsertIntoQuery
+		SelectQuery
+		SQL() string
+	}
+	InsertQuery interface {
+		Insert(columns ...string) Into[InsertIntoQuery]
+	}
+	InsertBuilder struct {
+		table     string
+		columns   []string
+		returning []string
+		values    []any
+		as        string
+		s         SelectQuery
+	}
+)
 
 var _ InsertQuery = &InsertBuilder{}
 
