@@ -9,27 +9,27 @@ import (
 
 func TestQuery(t *testing.T) {
 	t.Run("case=select", func(t *testing.T) {
-		s := NewSelectQuery("id", "username").From("users").Where("colA", Equals).SQL()
+		s := Select("id", "username").From("users").Where("colA", Equals).SQL()
 		require.Equal(t, "SELECT id, username FROM users WHERE colA = $1", s)
 	})
 
 	t.Run("case=select inner join", func(t *testing.T) {
-		s := NewSelectQuery("u.id", "u.username").From("users").As("u").InnerJoin("roles").On("r.id", "u.role_id").SQL()
+		s := Select("u.id", "u.username").From("users").As("u").InnerJoin("roles").On("r.id", "u.role_id").SQL()
 		require.Equal(t, "SELECT u.id, u.username FROM users AS u INNER JOIN roles ON r.id = u.role_id", s)
 	})
 
 	t.Run("case=select inner join with where", func(t *testing.T) {
-		s := NewSelectQuery("u.id", "u.username").From("users").As("u").InnerJoin("roles").On("r.id", "u.role_id").Where("u.id", Equals).SQL()
+		s := Select("u.id", "u.username").From("users").As("u").InnerJoin("roles").On("r.id", "u.role_id").Where("u.id", Equals).SQL()
 		require.Equal(t, "SELECT u.id, u.username FROM users AS u INNER JOIN roles ON r.id = u.role_id WHERE u.id = $1", s)
 	})
 
 	t.Run("case=select inner join with where and order by", func(t *testing.T) {
-		s := NewSelectQuery("u.id", "u.username").From("users").As("u").InnerJoin("roles").On("r.id", "u.role_id").Where("u.id", Equals).OrderBy(Asc, "u.id").SQL()
+		s := Select("u.id", "u.username").From("users").As("u").InnerJoin("roles").On("r.id", "u.role_id").Where("u.id", Equals).OrderBy(Asc, "u.id").SQL()
 		require.Equal(t, "SELECT u.id, u.username FROM users AS u INNER JOIN roles ON r.id = u.role_id WHERE u.id = $1 ORDER BY u.id ASC", s)
 	})
 
 	t.Run("case=select inner join with where and order by and left join", func(t *testing.T) {
-		s := NewSelectQuery("u.id", "u.username").
+		s := Select("u.id", "u.username").
 			From("users").
 			As("u").
 			InnerJoin("roles").
@@ -48,7 +48,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("case=order by desc", func(t *testing.T) {
-		s := NewSelectQuery("u.id", "u.username").
+		s := Select("u.id", "u.username").
 			From("users").
 			Where("u.id", Equals).
 			OrderBy(Desc, "u.id").SQL()
@@ -58,62 +58,62 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("case=insert into", func(t *testing.T) {
-		s := NewInsertQuery("user_id", "name").Into("users").Values(1, "foo").SQL()
+		s := Insert("user_id", "name").Into("users").Values(1, "foo").SQL()
 		require.Equal(t, "INSERT INTO users (user_id, name) VALUES ($1, $2)", s)
 	})
 
 	t.Run("case=insert into with alias", func(t *testing.T) {
-		s := NewInsertQuery("user_id", "name").Into("users").Values(1, "foo").SQL()
+		s := Insert("user_id", "name").Into("users").Values(1, "foo").SQL()
 		require.Equal(t, "INSERT INTO users (user_id, name) VALUES ($1, $2)", s)
 	})
 
 	t.Run("case=insert into with select", func(t *testing.T) {
-		s := NewInsertQuery("user_id", "name").Into("users").Select("id", "name").From("users").SQL()
+		s := Insert("user_id", "name").Into("users").Select("id", "name").From("users").SQL()
 		require.Equal(t, "INSERT INTO users (user_id, name) SELECT id, name FROM users", s)
 	})
 
 	t.Run("case=select where in", func(t *testing.T) {
-		s := NewSelectQuery("id", "username").From("users").Where("id", In(3)).SQL()
+		s := Select("id", "username").From("users").Where("id", In(3)).SQL()
 		require.Equal(t, "SELECT id, username FROM users WHERE id IN ($1, $2, $3)", s)
 	})
 
 	t.Run("case=select where and", func(t *testing.T) {
-		s := NewSelectQuery("id", "username").From("users").Where("id", Equals).And("username", Equals).SQL()
+		s := Select("id", "username").From("users").Where("id", Equals).And("username", Equals).SQL()
 		require.Equal(t, "SELECT id, username FROM users WHERE id = $1 AND username = $2", s)
 	})
 
 	t.Run("case=select where or", func(t *testing.T) {
-		s := NewSelectQuery("id", "username").From("users").Where("id", Equals).Or("username", Equals).SQL()
+		s := Select("id", "username").From("users").Where("id", Equals).Or("username", Equals).SQL()
 		require.Equal(t, "SELECT id, username FROM users WHERE id = $1 OR username = $2", s)
 	})
 
 	t.Run("case=select where and/or", func(t *testing.T) {
-		s := NewSelectQuery("id", "username").From("users").Where("id", Equals).And("username", Equals).Or("email", Equals).SQL()
+		s := Select("id", "username").From("users").Where("id", Equals).And("username", Equals).Or("email", Equals).SQL()
 		require.Equal(t, "SELECT id, username FROM users WHERE id = $1 AND username = $2 OR email = $3", s)
 	})
 
 	t.Run("case=update", func(t *testing.T) {
-		s := NewUpdateQuery("users").Set("id").Where("id", Equals).SQL()
+		s := Update("users").Set("id").Where("id", Equals).SQL()
 		require.Equal(t, "UPDATE users SET id = $1 WHERE id = $2", s)
 	})
 
 	t.Run("case=update where and", func(t *testing.T) {
-		s := NewUpdateQuery("users").Set("id").Where("id", Equals).And("username", Equals).SQL()
+		s := Update("users").Set("id").Where("id", Equals).And("username", Equals).SQL()
 		require.Equal(t, "UPDATE users SET id = $1 WHERE id = $2 AND username = $3", s)
 	})
 
 	t.Run("case=update where or", func(t *testing.T) {
-		s := NewUpdateQuery("users").Set("id").Where("id", Equals).Or("username", Equals).SQL()
+		s := Update("users").Set("id").Where("id", Equals).Or("username", Equals).SQL()
 		require.Equal(t, "UPDATE users SET id = $1 WHERE id = $2 OR username = $3", s)
 	})
 
 	t.Run("case=update where and/or", func(t *testing.T) {
-		s := NewUpdateQuery("users").Set("id").Where("id", Equals).And("username", Equals).Or("email", Equals).SQL()
+		s := Update("users").Set("id").Where("id", Equals).And("username", Equals).Or("email", Equals).SQL()
 		require.Equal(t, "UPDATE users SET id = $1 WHERE id = $2 AND username = $3 OR email = $4", s)
 	})
 
 	t.Run("case=delete", func(t *testing.T) {
-		s := NewDeleteQuery().From("users").Where("id", NotEqual).And("name", In(3)).SQL()
+		s := Delete().From("users").Where("id", NotEqual).And("name", In(3)).SQL()
 		require.Equal(t, "DELETE FROM users WHERE id != $1 AND name IN ($2, $3, $4)", s)
 	})
 }

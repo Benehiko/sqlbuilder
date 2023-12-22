@@ -51,7 +51,7 @@ type Sort struct {
 	orderBy OrderBy
 }
 
-func NewSelectQuery(columns ...string) FromQuery[SelectFromQuery] {
+func Select(columns ...string) FromQuery[SelectFromQuery] {
 	sb := &SelectBuilder{
 		pos: 1,
 	}
@@ -59,18 +59,18 @@ func NewSelectQuery(columns ...string) FromQuery[SelectFromQuery] {
 	return sb
 }
 
-func NewInsertQuery(columns ...string) Into[InsertIntoQuery] {
+func Insert(columns ...string) Into[InsertIntoQuery] {
 	ib := &InsertBuilder{}
 	ib.Insert(columns...)
 	return ib
 }
 
-func NewUpdateQuery(table string) UpdateSetQuery {
+func Update(table string) UpdateSetQuery {
 	ub := &UpdateBuilder{}
 	return ub.Update(table)
 }
 
-func NewDeleteQuery() FromQuery[DeleteFromQuery] {
+func Delete() FromQuery[DeleteFromQuery] {
 	db := &DeleteBuilder{}
 	return db.Delete()
 }
